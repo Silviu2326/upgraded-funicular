@@ -51,19 +51,7 @@ const config = {
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
 
-// Validación de configuración crítica
-const requiredInProduction = [
-  'JWT_SECRET',
-  'MONGODB_URI',
-];
-
-if (config.NODE_ENV === 'production') {
-  requiredInProduction.forEach((key) => {
-    if (!process.env[key]) {
-      console.error(`Error: La variable de entorno ${key} es requerida en producción`);
-      process.exit(1);
-    }
-  });
-}
+// Nota: Sin validación de DB - modo sin persistencia
+console.log('ℹ️  Configuración cargada - modo sin base de datos');
 
 module.exports = config;

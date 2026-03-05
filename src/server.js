@@ -10,15 +10,11 @@ const path = require('path');
 
 // Configuración
 const config = require('./config');
-const connectDB = require('./config/database');
 
 // Middleware
 const { errorHandler } = require('./middleware/errorHandler');
 
-// Rutas
-const disenoRoutes = require('./routes/disenoRoutes');
-const leadRoutes = require('./routes/leadRoutes');
-const presupuestoRoutes = require('./routes/presupuestoRoutes');
+// Rutas (solo las que no requieren base de datos)
 const diccionarioRoutes = require('./routes/diccionarioRoutes');
 const diccionarioRoutesPro = require('./routes/diccionarioRoutesPro');
 const mockupRoutes = require('./routes/mockupRoutes');
@@ -29,8 +25,8 @@ const logger = require('./utils/logger');
 // Crear app Express
 const app = express();
 
-// Conectar a base de datos
-connectDB();
+// Nota: Base de datos deshabilitada - modo sin persistencia
+console.log('⚠️  Servidor sin base de datos - modo API solo');
 
 // Middleware de seguridad
 app.use(helmet({
@@ -105,13 +101,21 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Rutas API
-app.use('/api/v1/disenos', disenoRoutes);
-app.use('/api/v1/leads', leadRoutes);
-app.use('/api/v1/presupuestos', presupuestoRoutes);
+// Rutas API (solo las que funcionan sin DB)
 app.use('/api/v1/diccionario', diccionarioRoutes);
 app.use('/api/v1/diccionario-pro', diccionarioRoutesPro);
 app.use('/api/v1/mockups', mockupRoutes);
+
+// Rutas que requieren DB - deshabilitadas
+app.use('/api/v1/disenos', (req, res) => {
+  res.status(503).json({ error: 'Servicio no disponible - requiere base de datos' });
+});
+app.use('/api/v1/leads', (req, res) => {
+  res.status(503).json({ error: 'Servicio no disponible - requiere base de datos' });
+});
+app.use('/api/v1/presupuestos', (req, res) => {
+  res.status(503).json({ error: 'Servicio no disponible - requiere base de datos' });
+});
 
 // Ruta base
 app.get('/', (req, res) => {
