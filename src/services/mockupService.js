@@ -72,13 +72,24 @@ class MockupService {
 
     if (categoria === 'letras-neon') {
       const colorDesc = colores.map(c => c.nombre).join(' and ');
-      const colorLuz = colorLuzLed || 'white';
+      const colorLuz = colorLuzLed || 'warm white';
       
-      promptBase = `Professional LED neon sign "${textoCompleto}" isolated on pure black background, 
-${estiloVisual} style, ${colorDesc} neon tubes, ${colorLuz} glow effect, 
-glass tube construction, glowing letters, clean typography "${textoCompleto}", 
-studio photography, isolated product shot, no environment, no context, just the neon sign,
-8k resolution, photorealistic, sharp focus`;
+      promptBase = `REALISTIC NEON SIGN - PRODUCT PHOTOGRAPHY
+
+Physical Specifications:
+- REAL glass neon tubes, 10-12mm diameter, filled with ${colorDesc} neon gas
+- Tubes have 3D cylindrical volume, not flat
+- Visible mounting brackets at connection points
+- Black power cables connected to letter sections
+- ${colorLuz} glow emanating from within glass tubes
+- Subtle reflections on glass surface
+
+Text: "${textoCompleto}"
+Style: ${estiloVisual}
+
+ISOLATED on pure black background, studio lighting from above and front,
+clear glass tube construction, visible hardware, product photography,
+8k resolution, hyper-realistic, sharp focus on tube details`;
 
       if (logo) {
         if (modoLogo === 'exacto') {
@@ -265,38 +276,46 @@ isolated product shot, no environment, studio photography,
     }
 
     // Prompt para integración realista del rótulo
-    const promptText = `GENERATE REALISTIC STOREFRONT SCENE
+    const promptText = `ULTRA-REALISTIC NEON SIGN MOCKUP - EXTERIOR
 
-Create a photorealistic exterior photograph of ${nombreNegocio} on ${fachadaDesc}.
+PHYSICAL NEON SIGN SPECIFICATIONS:
+- Construction: REAL glass neon tubes, 10-12mm diameter, gas-filled
+- Mounting: Heavy-duty chrome/silver metal brackets every 30-40cm
+- Tubes stand 5-8cm OFF the wall surface on spacers
+- Wiring: Black power cables connected to EACH letter, transformer visible
+- Glass tubes show reflections, imperfections, and 3D cylindrical form
+- Glow comes FROM within the tubes, not projected onto wall
 
-SIGNAGE SPECIFICATIONS (must match reference image style):
-- Text: "${textoCompleto}"
-- Style: Neon LED sign with warm golden/amber glow
-- Mounting: Physically attached to brick wall with visible metal brackets and supports
-- Wiring: Visible black cables connecting the neon tubes
-- Construction: Glass tubes with visible mounting hardware
-- Glow effect: Soft warm halo around the letters
+CRITICAL PHYSICAL REQUIREMENTS:
+1. TUBES HAVE 3D VOLUME - cylindrical glass with thickness, not flat light
+2. VISIBLE METAL BRACKETS holding tubes to ${fachadaDesc}
+3. CABLES physically connected to each letter section
+4. HARD SHADOWS cast by tubes and brackets ON the wall surface
+5. Sign looks HEAVY, PERMANENT, and SOLIDLY MOUNTED
+6. NO FLOATING HALO - illumination comes ONLY from glass tubes
+7. Weathering: Slight dust on tubes, minor imperfections in glow
 
-PHYSICAL INTEGRATION REQUIREMENTS:
-- Signage must be MOUNTED on the wall, not floating
-- Add realistic shadows CAST ON the brick wall surface
-- Include metal mounting brackets at connection points
-- Neon tubes should follow the wall perspective slightly
-- Reflection of the neon glow on the brick texture nearby
-- Cables should run along the wall realistically
+INSTALLATION DETAILS:
+- Wall-mounted brackets with visible screws
+- Power transformer box mounted nearby
+- Cables run from sign to electrical source
+- Gap between tubes and wall creates depth shadows
 
-SCENE DETAILS:
-${fachadaDesc}, ${contextoDesc}
+STOREFRONT CONTEXT:
+${fachadaDesc}
+${contextoDesc}
 
-LIGHTING: Golden hour warm sunlight with soft shadows
+ENVIRONMENT INTERACTION:
+- Neon reflects on sidewalk/wet pavement below
+- Glow creates warm pool of light on entrance area
+- Building facade shows realistic texture and weathering
+- Sign casts subtle colored light on surroundings
 
-CRITICAL RULES:
-- The signage must look PHYSICALLY ATTACHED to the building
-- Shadows must be cast ON the wall showing depth
-- No floating signs - everything must be mounted
-- Professional architectural photography style
+LIGHTING: Evening/dusk with natural ambient light + neon illumination
 
-OUTPUT: 8k photorealistic storefront photograph`; 
+CAMERA: Professional architectural photography, street level perspective
+
+OUTPUT: Hyper-realistic 8k storefront photograph, sharp detail, commercial photography quality`; 
 
     // Enviar prompt + imagen de referencia como contexto visual
     const result = await this.model.generateContent([
@@ -349,36 +368,44 @@ OUTPUT: 8k photorealistic storefront photograph`;
     }
 
     // Prompt para integración realista en interior
-    const promptText = `GENERATE REALISTIC INTERIOR SCENE
+    const promptText = `ULTRA-REALISTIC NEON SIGN MOCKUP - INTERIOR
 
-Create a photorealistic interior photograph of ${nombreNegocio} signage on a wall.
+PHYSICAL NEON SIGN SPECIFICATIONS:
+- Construction: REAL glass neon tubes, 10-12mm diameter, filled with neon gas
+- Mounting: Heavy-duty metal brackets (chrome/silver) every 30-40cm holding tubes to wall
+- Tubes have PHYSICAL DEPTH - they stand 5-8cm OFF the wall surface
+- Wiring: Black power cables visibly connected to EACH letter, running to transformer
+- Transformer: Small black box visible somewhere on wall or floor
+- Glass tubes show subtle reflections and slight imperfections
+- Color: Warm golden/amber glow from within the tubes themselves
 
-SIGNAGE SPECIFICATIONS (must match reference image style):
-- Text: "${textoCompleto}"
-- Style: Neon LED sign with warm golden/amber glow  
-- Mounting: Physically attached to wall with visible mounting hardware
-- Wiring: Visible cables running from the sign
-- Glow effect: Soft warm ambient illumination
+CRITICAL PHYSICAL REQUIREMENTS:
+1. TUBES MUST HAVE 3D VOLUME - not flat light, but cylindrical glass tubes
+2. METAL BRACKETS visible holding each section to the wall
+3. CABLES connected to each letter, not floating freely
+4. HARD SHADOWS cast by tubes and brackets onto wall behind
+5. The sign is HEAVY and SOLID - shows weight and permanence
+6. NO FLOATING GLOW - light comes ONLY from the glass tubes
+7. Wall surface shows slight discoloration/warmth from years of light exposure
 
-PHYSICAL INTEGRATION REQUIREMENTS:
-- Signage must be MOUNTED on the wall surface, not floating
-- Add realistic shadows CAST ON the wall behind it
-- Include visible mounting brackets or support structure
-- Glow should reflect on nearby wall surfaces
-- Cables should be realistically routed along the wall
+INSTALLATION DETAILS:
+- Spacers/brackets create 5-8cm gap between tubes and wall
+- Visible mounting screws in brackets
+- Power cable runs from sign to floor or wall socket
+- Optional: Chain or wire suspension for larger sections
 
-SCENE DETAILS:
+SCENE CONTEXT:
 ${interiorDesc}
 
-LIGHTING: Interior ambient lighting with neon glow as accent light
+ENVIRONMENT INTERACTION:
+- Light reflects off nearby surfaces (desk, floor, ceiling)
+- Wall has realistic texture (paint, concrete, wood, etc.)
+- Subtle ambient occlusion where brackets meet wall
+- Neon creates pools of warm light on floor below
 
-CRITICAL RULES:
-- The signage must look PHYSICALLY ATTACHED to the wall
-- Shadows must show depth and dimension
-- No floating elements - everything physically mounted
-- Professional interior design photography style
+CAMERA: Professional architectural photography, eye level, slight angle to show depth
 
-OUTPUT: 8k photorealistic interior photograph`; 
+OUTPUT: Hyper-realistic 8k photograph, sharp focus, professional lighting`; 
 
     // Enviar prompt + imagen de referencia como contexto visual
     const result = await this.model.generateContent([
