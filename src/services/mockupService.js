@@ -7,7 +7,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs').promises;
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 class MockupService {
   constructor() {
@@ -430,7 +430,7 @@ OUTPUT: 8k photorealistic interior photograph`;
       const baseDir = path.join(__dirname, '../../', carpeta);
       await fs.mkdir(baseDir, { recursive: true });
 
-      const filename = `${prefijo}-${uuidv4()}.png`;
+      const filename = `${prefijo}-${crypto.randomUUID()}.png`;
       const filepath = path.join(baseDir, filename);
 
       await fs.writeFile(filepath, Buffer.from(resultado.imagenBase64, 'base64'));
