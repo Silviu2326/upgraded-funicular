@@ -74,22 +74,24 @@ class MockupService {
       const colorDesc = colores.map(c => c.nombre).join(' and ');
       const colorLuz = colorLuzLed || 'warm white';
       
-      promptBase = `REALISTIC NEON SIGN - PRODUCT PHOTOGRAPHY
+      promptBase = `REAL NEON TUBES - NO BACKING PANEL
 
-Physical Specifications:
-- REAL glass neon tubes, 10-12mm diameter, filled with ${colorDesc} neon gas
-- Tubes have 3D cylindrical volume, not flat
-- Visible mounting brackets at connection points
-- Black power cables connected to letter sections
-- ${colorLuz} glow emanating from within glass tubes
-- Subtle reflections on glass surface
+Construction:
+- Individual REAL glass neon tubes, 10-12mm diameter
+- ${colorDesc} gas-filled tubes, ${colorLuz} glow
+- 3D cylindrical glass with visible thickness
+- NO acrylic/glass backing panel
+- NO frame or substrate
+- Individual tubes forming letters "${textoCompleto}"
 
-Text: "${textoCompleto}"
-Style: ${estiloVisual}
+Mounting Hardware Visible:
+- Small metal electrode housings at tube ends
+- Silicone cable connections between letter sections
+- ${estiloVisual} style
 
-ISOLATED on pure black background, studio lighting from above and front,
-clear glass tube construction, visible hardware, product photography,
-8k resolution, hyper-realistic, sharp focus on tube details`;
+PURE BLACK BACKGROUND, studio lighting,
+product photography, isolated individual tubes,
+8k resolution, hyper-realistic glass material`;
 
       if (logo) {
         if (modoLogo === 'exacto') {
@@ -276,46 +278,43 @@ isolated product shot, no environment, studio photography,
     }
 
     // Prompt para integración realista del rótulo
-    const promptText = `ULTRA-REALISTIC NEON SIGN MOCKUP - EXTERIOR
+    const promptText = `ULTRA-REALISTIC NEON SIGN - MOUNTED ON WALL
 
-PHYSICAL NEON SIGN SPECIFICATIONS:
-- Construction: REAL glass neon tubes, 10-12mm diameter, gas-filled
-- Mounting: Heavy-duty chrome/silver metal brackets every 30-40cm
-- Tubes stand 5-8cm OFF the wall surface on spacers
-- Wiring: Black power cables connected to EACH letter, transformer visible
-- Glass tubes show reflections, imperfections, and 3D cylindrical form
-- Glow comes FROM within the tubes, not projected onto wall
+CRITICAL: INDIVIDUAL LETTER MOUNTING - NO SUPPORT PANEL
+- Each letter/bend is mounted DIRECTLY to ${fachadaDesc} with individual metal brackets
+- NO glass/acrylic backing panel holding the entire sign
+- NO frame or box around the sign
+- Each tube section has its own mounting hardware
 
-CRITICAL PHYSICAL REQUIREMENTS:
-1. TUBES HAVE 3D VOLUME - cylindrical glass with thickness, not flat light
-2. VISIBLE METAL BRACKETS holding tubes to ${fachadaDesc}
-3. CABLES physically connected to each letter section
-4. HARD SHADOWS cast by tubes and brackets ON the wall surface
-5. Sign looks HEAVY, PERMANENT, and SOLIDLY MOUNTED
-6. NO FLOATING HALO - illumination comes ONLY from glass tubes
-7. Weathering: Slight dust on tubes, minor imperfections in glow
+PHYSICAL NEON SPECIFICATIONS:
+- REAL glass neon tubes, 10-12mm diameter
+- Individual chrome/stainless steel brackets at each letter mounting point
+- Brackets bolted DIRECTLY into wall surface
+- Tubes protrude 5-8cm from wall on spacers
+- Black silicone-coated cables connect letter sections
+- Visible wire runs between letters along wall surface
+- Metal transformer box mounted on wall near sign
 
-INSTALLATION DETAILS:
-- Wall-mounted brackets with visible screws
-- Power transformer box mounted nearby
-- Cables run from sign to electrical source
-- Gap between tubes and wall creates depth shadows
+MOUNTING DETAILS (CRITICAL):
+- Individual "L" brackets or circular mounts at tube bends and straight sections
+- Visible screws/bolts securing each bracket to ${fachadaDesc}
+- NO continuous backing plate or substrate
+- Letters appear to "float" slightly but each has physical connection to wall
+- Gaps between letters show wall texture behind
 
-STOREFRONT CONTEXT:
+PHYSICAL PROPERTIES:
+- Tubes cast DISTINCT SHADOWS on wall (one per tube section)
+- Brackets cast small sharp shadows
+- Glow reflects subtly on wall surface around tubes
+- Weather-appropriate installation (sealed penetrations, outdoor-rated)
+
+STOREFRONT:
 ${fachadaDesc}
 ${contextoDesc}
 
-ENVIRONMENT INTERACTION:
-- Neon reflects on sidewalk/wet pavement below
-- Glow creates warm pool of light on entrance area
-- Building facade shows realistic texture and weathering
-- Sign casts subtle colored light on surroundings
+COMPOSITION: Sign is architectural element, not applied graphic
 
-LIGHTING: Evening/dusk with natural ambient light + neon illumination
-
-CAMERA: Professional architectural photography, street level perspective
-
-OUTPUT: Hyper-realistic 8k storefront photograph, sharp detail, commercial photography quality`; 
+OUTPUT: Professional architectural photography, 8k, dusk/evening lighting`; 
 
     // Enviar prompt + imagen de referencia como contexto visual
     const result = await this.model.generateContent([
@@ -368,44 +367,45 @@ OUTPUT: Hyper-realistic 8k storefront photograph, sharp detail, commercial photo
     }
 
     // Prompt para integración realista en interior
-    const promptText = `ULTRA-REALISTIC NEON SIGN MOCKUP - INTERIOR
+    const promptText = `ULTRA-REALISTIC NEON SIGN - INTERIOR WALL MOUNTED
 
-PHYSICAL NEON SIGN SPECIFICATIONS:
-- Construction: REAL glass neon tubes, 10-12mm diameter, filled with neon gas
-- Mounting: Heavy-duty metal brackets (chrome/silver) every 30-40cm holding tubes to wall
-- Tubes have PHYSICAL DEPTH - they stand 5-8cm OFF the wall surface
-- Wiring: Black power cables visibly connected to EACH letter, running to transformer
-- Transformer: Small black box visible somewhere on wall or floor
-- Glass tubes show subtle reflections and slight imperfections
-- Color: Warm golden/amber glow from within the tubes themselves
+CRITICAL: NO BACKING PANEL - INDIVIDUAL MOUNTING ONLY
+- Each neon letter mounted INDIVIDUALLY to interior wall
+- NO glass/acrylic substrate holding the entire sign
+- NO frame, box, or backing plate behind letters
+- Individual mounting hardware per letter section
 
-CRITICAL PHYSICAL REQUIREMENTS:
-1. TUBES MUST HAVE 3D VOLUME - not flat light, but cylindrical glass tubes
-2. METAL BRACKETS visible holding each section to the wall
-3. CABLES connected to each letter, not floating freely
-4. HARD SHADOWS cast by tubes and brackets onto wall behind
-5. The sign is HEAVY and SOLID - shows weight and permanence
-6. NO FLOATING GLOW - light comes ONLY from the glass tubes
-7. Wall surface shows slight discoloration/warmth from years of light exposure
+PHYSICAL INSTALLATION:
+- Chrome/stainless steel "L" brackets or standoffs at each tube junction
+- Brackets bolted/screwed directly into wall surface
+- Each bracket holds tube 5-8cm off wall on metal spacer
+- Visible fasteners (screws) in each bracket base
+- Black silicone cables run along wall connecting letter sections
+- Wall-mounted transformer/power supply unit
+- Professional cable management along wall to electrical source
 
-INSTALLATION DETAILS:
-- Spacers/brackets create 5-8cm gap between tubes and wall
-- Visible mounting screws in brackets
-- Power cable runs from sign to floor or wall socket
-- Optional: Chain or wire suspension for larger sections
+TUBE SPECIFICATIONS:
+- Real glass neon tubes, 10-12mm diameter
+- 3D cylindrical form with reflections and thickness
+- Warm glow emanating from within glass (not projected)
+- Individual tubes per letter, not continuous backing
 
-SCENE CONTEXT:
+SHADOWS & DEPTH:
+- Each tube casts individual shadow on wall behind it
+- Brackets cast small defined shadows
+- Wall texture visible BETWEEN letters (no continuous backing)
+- Subtle glow reflection on wall around tubes
+
+SCENE:
 ${interiorDesc}
 
-ENVIRONMENT INTERACTION:
-- Light reflects off nearby surfaces (desk, floor, ceiling)
-- Wall has realistic texture (paint, concrete, wood, etc.)
-- Subtle ambient occlusion where brackets meet wall
-- Neon creates pools of warm light on floor below
+CRITICAL RULES:
+- Letters mounted as independent architectural elements
+- Wall surface visible between and around letters
+- No substrate panel - tubes attach directly to wall via hardware
+- Professional commercial installation appearance
 
-CAMERA: Professional architectural photography, eye level, slight angle to show depth
-
-OUTPUT: Hyper-realistic 8k photograph, sharp focus, professional lighting`; 
+OUTPUT: Interior design photography, 8k, professional lighting showing depth`; 
 
     // Enviar prompt + imagen de referencia como contexto visual
     const result = await this.model.generateContent([
