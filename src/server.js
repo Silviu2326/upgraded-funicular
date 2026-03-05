@@ -48,7 +48,7 @@ app.use(helmet({
 // CORS - Permitir cualquier origen en desarrollo
 app.use(cors({
   origin: config.NODE_ENV === 'production' 
-    ? ['https://rotulemos.com', 'https://www.rotulemos.com'] 
+    ? ['https://rotulemos.com', 'https://www.rotulemos.com', 'https://rotulos-psi.vercel.app'] 
     : '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
