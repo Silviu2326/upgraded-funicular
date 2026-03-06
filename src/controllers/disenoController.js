@@ -4,6 +4,87 @@ const geminiImageService = require('../services/geminiImageService');
 const cloudinaryService = require('../services/cloudinaryService');
 const { asyncHandler, ErrorResponse } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
+const { generarPromptIA } = require('../config/diccionarioPromptsPro');
+
+/**
+ * Normalizar campos del formulario al esquema de MongoDB
+ * Convierte los campos del frontend (camelCase/form) al esquema
+ */
+function normalizarCampos(body) {
+  const normalizado = { ...body };
+  
+  // Mapear campos del formulario a configEspecifica
+  if (!normalizado.configEspecifica) {
+    normalizado.configEspecifica = {};
+  }
+  
+  // Corpóreas
+  if (body.corporeaTipo) {
+    normalizado.configEspecifica.tipoLetraCorporea = body.corporeaTipo;
+  }
+  if (body.corporeaRelieve) {
+    normalizado.configEspecifica.espesor = body.corporeaRelieve;
+  }
+  
+  // LED
+  if (body.ledColor) {
+    normalizado.configEspecifica.colorLuzLed = body.ledColor;
+  }
+  
+  // Láser
+  if (body.laserMaterial) {
+    normalizado.configEspecifica.materialLaser = body.laserMaterial;
+  }
+  
+  // Lona
+  if (body.lonaBusinessType) {
+    normalizado.configEspecifica.tipoNegocioLona = body.lonaBusinessType;
+  }
+  if (body.lonaStyle) {
+    normalizado.configEspecifica.estiloLona = body.lonaStyle;
+  }
+  
+  // Colores
+  if (body.coloresSeleccionados) {
+    normalizado.coloresSeleccionados = body.coloresSeleccionados;
+  }
+  
+  // Orientación
+  if (body.orientacion) {
+    normalizado.orientacion = body.orientacion;
+  }
+  
+  // Texto adicional
+  if (body.textoAdicional) {
+    normalizado.textoAdicional = body.textoAdicional;
+  }
+  
+  // Estilo visual
+  if (body.estilo) {
+    normalizado.estiloVisual = body.estilo;
+  }
+  
+  // Descripción
+  if (body.descripcion) {
+    normalizado.descripcion = {
+      original: body.descripcion,
+      mejorada: body.descripcionMejorada || ''
+    };
+  }
+  
+  // Logo y modo de integración
+  if (body.logo) {
+    normalizado.logo = {
+      url: body.logo,
+      modoIntegracion: body.modoIntegracionLogo || 'ia'
+    };
+  }
+  if (body.modoIntegracionLogo) {
+    normalizado.modoIntegracionLogo = body.modoIntegracionLogo;
+  }
+  
+  return normalizado;
+}
 
 // @desc    Crear nuevo diseño
 // @route   POST /api/v1/disenos
@@ -20,8 +101,16 @@ exports.crearDiseno = asyncHandler(async (req, res, next) => {
   }
 
   // Validar nombre del negocio
-  if (!req.body.nombreNegocio) {
+  if (!req.body.nombreNegocio && !req.body.texto) {
     return next(new ErrorResponse('El nombre del negocio es obligatorio', 400));
+  }
+
+  // Normalizar campos del formulario
+  req.body = normalizarCampos(req.body);
+  
+  // Si viene texto pero no nombreNegocio, usar texto
+  if (!req.body.nombreNegocio && req.body.texto) {
+    req.body.nombreNegocio = req.body.texto;
   }
 
   // Crear diseño
@@ -224,15 +313,38 @@ exports.generarPrompt = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Diseño no encontrado con id ${req.params.id}`, 404));
   }
 
+  // Generar prompt completo usando el servicio
   const prompt = await aiService.generarPrompt(diseno);
 
-  // Guardar prompt mejorado
-  diseno.descripcion.mejorada = prompt;
+  // Generar descripción mejorada con diccionario si hay descripción original
+  let descripcionMejorada = null;
+  if (diseno.descripcion?.original) {
+    descripcionMejorada = aiService.generarDescripcionMejorada(
+      diseno.descripcion.original,
+      diseno.categoria,
+      diseno.estiloVisual,
+      diseno.configEspecifica?.tipoNegocioLona
+    );
+    
+    // Guardar descripción mejorada
+    diseno.descripcion.mejorada = descripcionMejorada;
+  }
+  
+  // Guardar prompt
+  diseno.prompt = prompt;
   await diseno.save();
 
   res.status(200).json({
     success: true,
-    data: { prompt },
+    data: { 
+      prompt,
+      descripcionMejorada,
+      config: {
+        categoria: diseno.categoria,
+        estilo: diseno.estiloVisual,
+        tipoNegocio: diseno.configEspecifica?.tipoNegocioLona
+      }
+    },
   });
 });
 
@@ -254,6 +366,56 @@ exports.analizarLegibilidad = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Mejorar descripción con IA
+// @route   POST /api/v1/disenos/mejorar-descripcion
+// @access  Public
+exports.mejorarDescripcion = asyncHandler(async (req, res, next) => {
+  const { descripcion, categoria, estilo, tipoNegocio } = req.body;
+
+  if (!descripcion) {
+    return next(new ErrorResponse('La descripción es obligatoria', 400));
+  }
+
+  if (!categoria) {
+    return next(new ErrorResponse('La categoría es obligatoria', 400));
+  }
+
+  try {
+    // Generar descripción mejorada usando el diccionario
+    const descripcionMejorada = await aiService.mejorarDescripcion(
+      descripcion,
+      categoria,
+      estilo || 'moderno',
+      tipoNegocio
+    );
+
+    // Generar prompt completo con la descripción mejorada
+    const promptCompleto = generarPromptIA(
+      categoria,
+      estilo || 'moderno',
+      tipoNegocio,
+      { descripcion: descripcionMejorada }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        original: descripcion,
+        mejorada: descripcionMejorada,
+        promptIA: promptCompleto,
+        metadata: {
+          categoria,
+          estilo: estilo || 'moderno',
+          tipoNegocio
+        }
+      },
+    });
+  } catch (error) {
+    logger.error('Error mejorando descripción:', error);
+    return next(new ErrorResponse('Error al mejorar la descripción', 500));
+  }
+});
+
 // @desc    Generar imagen del rótulo con IA (Gemini Nativo)
 // @route   POST /api/v1/disenos/:id/generar-imagen
 // @access  Public/Private
@@ -267,14 +429,26 @@ exports.generarImagen = asyncHandler(async (req, res, next) => {
   try {
     const { cantidad = 1 } = req.body;
     
+    // Preparar datos enriquecidos con todos los campos del formulario
+    const datosEnriquecidos = {
+      ...diseno.toObject(),
+      texto: diseno.nombreNegocio,
+      lonaBusinessType: diseno.configEspecifica?.tipoNegocioLona,
+      lonaStyle: diseno.configEspecifica?.estiloLona,
+      corporeaTipo: diseno.configEspecifica?.tipoLetraCorporea,
+      corporeaRelieve: diseno.configEspecifica?.espesor,
+      ledColor: diseno.configEspecifica?.colorLuzLed,
+      laserMaterial: diseno.configEspecifica?.materialLaser,
+    };
+    
     let resultado;
     
     if (cantidad > 1) {
       // Generar múltiples variaciones
-      resultado = await geminiImageService.generarVariaciones(diseno, cantidad);
+      resultado = await geminiImageService.generarVariaciones(datosEnriquecidos, cantidad);
     } else {
       // Generar imagen única
-      resultado = await geminiImageService.generarImagenRotulo(diseno);
+      resultado = await geminiImageService.generarImagenRotulo(datosEnriquecidos);
     }
     
     // Si se generó imagen, subir a Cloudinary para persistencia

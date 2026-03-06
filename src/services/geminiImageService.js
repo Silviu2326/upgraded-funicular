@@ -3,7 +3,14 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const fs = require('fs').promises;
 const path = require('path');
-const diccionarioPrompts = require('../config/diccionarioPrompts');
+const { 
+  generarPromptIA,
+  PROMPTS_CATEGORIA,
+  PROMPTS_NEGOCIO,
+  TIPOS_CORPOREAS,
+  COLORES_LED,
+  MATERIALES_LASER
+} = require('../config/diccionarioPromptsPro');
 
 // Inicializar Gemini con la API key
 const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY || 'AIzaSyAcp0Q71kM6kExB89ynBfi3iza9P8JNKB8');
@@ -25,18 +32,70 @@ class GeminiImageService {
   }
 
   /**
+   * Procesar imagen base64 para Gemini
+   */
+  procesarImagenParaGemini(imageUrl, tipo = 'imagen') {
+    if (!imageUrl) return null;
+    
+    if (imageUrl.startsWith('data:')) {
+      try {
+        const matches = imageUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+        if (matches) {
+          return {
+            inlineData: {
+              mimeType: matches[1],
+              data: matches[2]
+            }
+          };
+        }
+      } catch (error) {
+        logger.warn(`Error procesando ${tipo}:`, error.message);
+      }
+    } else if (imageUrl.startsWith('http')) {
+      logger.info(`${tipo} URL remota: ${imageUrl}`);
+    }
+    return null;
+  }
+
+  /**
    * Generar imagen de rótulo usando Gemini nativo
    * @param {Object} disenioData - Datos del diseño
    * @returns {Promise<Object>} - Imagen generada en base64
    */
   async generarImagenRotulo(disenioData) {
     try {
-      logger.info(`Generando imagen con Gemini para: ${disenioData.nombreNegocio}`);
+      logger.info(`Generando imagen con Gemini para: ${disenioData.nombreNegocio || disenioData.texto}`);
       
       const prompt = this.construirPromptImagen(disenioData);
       
+      // Preparar contenido para Gemini
+      let contentParts = [];
+      
+      // Si hay fachada personalizada, añadirla primero como contexto
+      if (disenioData.fachadaPersonalizada) {
+        const fachadaPart = this.procesarImagenParaGemini(disenioData.fachadaPersonalizada, 'fachada');
+        if (fachadaPart) {
+          contentParts.push(fachadaPart);
+          contentParts.push('Use this facade image as the exact background context. The signage should be placed realistically on this specific facade.');
+          logger.info('Fachada personalizada añadida al contenido de Gemini');
+        }
+      }
+      
+      // Si hay logo, añadirlo como imagen de referencia
+      if (disenioData.logo) {
+        const logoUrl = disenioData.logo.url || disenioData.logo;
+        const logoPart = this.procesarImagenParaGemini(logoUrl, 'logo');
+        if (logoPart) {
+          contentParts.push(logoPart);
+          logger.info('Logo añadido al contenido de Gemini');
+        }
+      }
+      
+      // Añadir el prompt como texto
+      contentParts.push(prompt);
+      
       // Generar imagen con Gemini
-      const result = await this.model.generateContent(prompt);
+      const result = await this.model.generateContent(contentParts);
       const response = await result.response;
       
       // Extraer imagen de la respuesta
@@ -51,6 +110,7 @@ class GeminiImageService {
           tipo: 'prompt',
           prompt: prompt,
           descripcion: textPart?.text || 'Prompt generado',
+          logoIncluido: disenioData.logo ? true : false,
         };
       }
       
@@ -69,6 +129,8 @@ class GeminiImageService {
           dataUrl: `data:${mimeType};base64,${imageBase64}`,
         },
         prompt: prompt,
+        logoIncluido: disenioData.logo ? true : false,
+        fachadaIncluida: disenioData.fachadaPersonalizada ? true : false,
       };
       
     } catch (error) {
@@ -135,10 +197,17 @@ class GeminiImageService {
     try {
       const { tipoNegocio, estiloVisual, colores, descripcion } = config;
       
+      // Usar el diccionario para enriquecer el prompt
+      const catData = PROMPTS_CATEGORIA['lonas-pancartas'];
+      const negData = PROMPTS_NEGOCIO[tipoNegocio] || PROMPTS_NEGOCIO['general'];
+      const estiloDesc = catData?.estilos?.[estiloVisual] || catData?.estilos?.['moderno'];
+      
       const prompt = `Create a professional decorative background banner for a ${tipoNegocio} business.
 
-STYLE: ${estiloVisual}, professional graphic design
+STYLE: ${estiloVisual} - ${estiloDesc}
 COLORS: ${colores?.join(', ') || 'corporate colors'}
+KEYWORDS: ${negData?.keywords?.join(', ') || 'professional, commercial'}
+ELEMENTS: ${negData?.elementos?.slice(0, 3).join(', ') || 'business themed'}
 ${descripcion ? `DETAILS: ${descripcion}` : ''}
 
 REQUIREMENTS:
@@ -188,75 +257,116 @@ The image should be a beautiful background that will have text added separately.
    * Construir prompt detallado usando el Diccionario de Prompts Profesional
    */
   construirPromptImagen(disenioData) {
-    // Usar el constructor de prompts del diccionario
-    const promptBase = diccionarioPrompts.construirPrompt(disenioData);
-    
-    // Añadir detalles adicionales específicos
     const {
       categoria,
       nombreNegocio,
-      estiloVisual,
+      texto,
+      estiloVisual = 'moderno',
       colores = [],
+      coloresSeleccionados = [],
       tipografia,
-      tipoLetraCorporea,
-      espesor,
-      colorLuzLed,
-      materialLaser,
-      fachada,
-      tipoNegocio,
+      orientacion = 'horizontal',
+      textoAdicional,
+      descripcion,
+      corporeaTipo,
+      corporeaRelieve,
+      ledColor,
+      laserMaterial,
+      lonaBusinessType,
+      lonaStyle,
+      configEspecifica = {},
       variacion = 1,
+      logo,
+      modoIntegracionLogo,
+      fachadaPersonalizada,
     } = disenioData;
 
-    // Obtener keywords enriquecidas
-    const keywords = diccionarioPrompts.getKeywords(categoria, estiloVisual);
+    // Combinar colores
+    const todosLosColores = [
+      ...colores.map(c => c.hex || c.nombre || c),
+      ...coloresSeleccionados
+    ].filter(Boolean);
+
+    // Obtener datos del diccionario
+    const catData = PROMPTS_CATEGORIA[categoria];
+    const estiloDesc = catData?.estilos?.[estiloVisual] || '';
+    const negData = lonaBusinessType ? PROMPTS_NEGOCIO[lonaBusinessType] : null;
     
-    // Construir secciones detalladas
-    let seccionDetalles = '';
-    let seccionMaterial = '';
-    let seccionIluminacion = '';
+    // Texto principal
+    const textoPrincipal = texto || nombreNegocio;
     
-    // Detalles específicos por categoría
-    const catInfo = diccionarioPrompts.categoriasProducto[categoria];
-    if (catInfo && catInfo.promptTemplate) {
-      seccionDetalles = `\n${catInfo.promptTemplate.detalles || ''}`;
-      seccionIluminacion = `\n${catInfo.promptTemplate.iluminacion || ''}`;
+    // Construir secciones específicas por categoría
+    let seccionEspecifica = '';
+    
+    if (categoria === 'letras-corporeas' && (corporeaTipo || configEspecifica?.tipoLetraCorporea)) {
+      const tipo = corporeaTipo || configEspecifica?.tipoLetraCorporea;
+      const tipoInfo = TIPOS_CORPOREAS[tipo];
+      const relieve = corporeaRelieve || configEspecifica?.espesor;
+      seccionEspecifica = `
+LETTER TYPE: ${tipoInfo?.nombre || tipo}
+- Material: ${tipoInfo?.descripcion || 'premium material'}
+- Thickness: ${relieve || '5cm'} depth
+- Finish: ${tipoInfo?.acabados?.join(', ') || 'professional'}`;
     }
     
-    // Materiales específicos
-    if (categoria === 'letras-corporeas' && tipoLetraCorporea) {
-      const matBase = tipoLetraCorporea.split('-')[0];
-      const matInfo = diccionarioPrompts.materiales[matBase];
-      if (matInfo) {
-        seccionMaterial = `\nMATERIAL SPECIFICATIONS:
-- Primary material: ${matInfo.nombre.en}
-- Finish: ${matInfo.acabados.join(', ')}
-- Appearance: ${matInfo.apariencia}
-${espesor ? `- Thickness: ${espesor}cm depth` : ''}`;
-      }
+    if (categoria === 'letras-neon' && (ledColor || configEspecifica?.colorLuzLed)) {
+      const color = ledColor || configEspecifica?.colorLuzLed;
+      const ledInfo = COLORES_LED[color];
+      seccionEspecifica = `
+NEON SPECIFICATIONS:
+- LED Color: ${ledInfo?.nombre || color}
+- Temperature: ${ledInfo?.temp || 'vibrant'}
+- Effect: Glowing neon tubes with soft halo`;
     }
     
-    // Iluminación específica
-    if (colorLuzLed && (categoria === 'letras-neon' || categoria === 'letras-corporeas')) {
-      seccionIluminacion += `\n- LED ${categoria === 'letras-neon' ? 'neon tubes' : 'illumination'} with ${colorLuzLed} light`;
+    if (categoria === 'lonas-pancartas' && (lonaBusinessType || configEspecifica?.tipoNegocioLona)) {
+      const negocio = lonaBusinessType || configEspecifica?.tipoNegocioLona;
+      const neg = PROMPTS_NEGOCIO[negocio] || PROMPTS_NEGOCIO['general'];
+      seccionEspecifica = `
+BANNER CONTEXT:
+- Business Type: ${negocio}
+- Style: ${lonaStyle || configEspecifica?.estiloLona || estiloVisual}
+- Keywords: ${neg?.keywords?.join(', ') || 'professional'}
+- Visual Elements: ${neg?.elementos?.slice(0, 3).join(', ') || 'commercial'}`;
     }
 
     // Componer prompt final
-    return `${promptBase}
+    return `Professional commercial signage photography: ${catData?.contexto || 'sign'} 
 
-${seccionMaterial}
-${seccionDetalles}
-${seccionIluminacion}
+BUSINESS NAME: "${textoPrincipal}"
+${textoAdicional ? `TAGLINE: "${textoAdicional}"` : ''}
 
-TECHNICAL SPECIFICATIONS:
-- Keywords: ${keywords.slice(0, 8).join(', ')}
-- Variation: ${variacion}
-- Rendering: photorealistic 3D, ray-traced lighting
-- Resolution: 8K ultra-detailed
-- Focus: sharp focus on "${nombreNegocio}" text
-- Quality: professional commercial photography, marketing-ready
-- No watermarks, no text errors, perfect typography
+SPECIFICATIONS:
+- Product: ${categoria}
+- Style: ${estiloVisual} - ${estiloDesc}
+- Colors: ${todosLosColores.join(', ') || 'professional palette'}
+- Typography: ${tipografia?.nombre || tipografia?.familia || 'modern professional font'}
+- Orientation: ${orientacion}
 
-Create a visually stunning promotional image perfect for a signage company portfolio.`;
+${seccionEspecifica}
+
+CONTEXT:
+${catData?.contexto || 'Professional commercial signage'}
+${negData ? `Business context: ${negData.keywords?.join(', ')}` : ''}
+${descripcion?.original ? `Additional details: ${descripcion.original}` : ''}
+
+${logo ? `LOGO REFERENCE (Exact Integration Required):
+Use the provided logo image as an exact reference. The logo must be integrated precisely as shown, maintaining all original colors, shapes, and proportions. Position the logo prominently alongside the main text.` : 'LOGO: No logo provided - text only design'}
+
+${fachadaPersonalizada ? `FACADE REFERENCE:
+The provided facade image shows the EXACT background where the signage will be installed. Place the signage realistically on this specific facade, matching the perspective, lighting, and architectural style.` : 'FACADE: Standard facade context - professional building exterior'}
+
+TECHNICAL REQUIREMENTS:
+- Photorealistic 3D render quality
+- 8K resolution, ultra-detailed
+- Sharp focus on "${textoPrincipal}"
+- Professional commercial photography
+- No watermarks, no text errors
+- Clean composition for marketing
+- Aspect ratio ${orientacion === 'horizontal' ? '16:9' : orientacion === 'vertical' ? '9:16' : '1:1'}
+${variacion > 1 ? `- Variation ${variacion}` : ''}
+
+Create a stunning promotional image for a signage company portfolio.`;
   }
 
   /**

@@ -8,6 +8,7 @@ const {
   deleteDiseno,
   generarPrompt,
   analizarLegibilidad,
+  mejorarDescripcion,
   subirImagen,
   generarImagen,
   generarFondosLona,
@@ -34,6 +35,11 @@ router
 router
   .route('/:id/legibilidad')
   .post(optionalAuth, analizarLegibilidad);
+
+// Endpoint público para mejorar descripción (usado desde el frontend)
+router
+  .route('/mejorar-descripcion')
+  .post(mejorarDescripcion);
 
 router
   .route('/:id/imagen')

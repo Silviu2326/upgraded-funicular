@@ -5,7 +5,7 @@ const disenoSchema = new mongoose.Schema({
   usuario: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Usuario',
-    required: false, // Puede ser anónimo inicialmente
+    required: false,
   },
   
   // Datos del lead (si no está registrado)
@@ -21,6 +21,14 @@ const disenoSchema = new mongoose.Schema({
     required: [true, 'El nombre del negocio es obligatorio'],
     trim: true,
     maxlength: [100, 'El nombre no puede tener más de 100 caracteres'],
+  },
+
+  // Texto principal del rótulo
+  texto: {
+    type: String,
+    required: [true, 'El texto del rótulo es obligatorio'],
+    trim: true,
+    maxlength: [100, 'El texto no puede tener más de 100 caracteres'],
   },
 
   // Categoría seleccionada
@@ -43,6 +51,13 @@ const disenoSchema = new mongoose.Schema({
     ],
   },
 
+  // Material seleccionado
+  material: {
+    type: String,
+    enum: ['pvc', 'aluminio', 'metacrilato', 'acero', ''],
+    default: '',
+  },
+
   // Tipografía
   tipografia: {
     id: String,
@@ -50,11 +65,28 @@ const disenoSchema = new mongoose.Schema({
     familia: String,
   },
 
-  // Colores seleccionados
+  // Colores seleccionados (HSB + predefinidos)
   colores: [{
     nombre: String,
     hex: String,
   }],
+  
+  // Colores seleccionados del color picker HSB
+  coloresSeleccionados: [{
+    type: String,
+  }],
+
+  // Color de fondo
+  colorFondo: {
+    id: String,
+    hex: String,
+  },
+
+  // Color del texto
+  colorTexto: {
+    id: String,
+    hex: String,
+  },
 
   // Orientación
   orientacion: {
@@ -63,7 +95,7 @@ const disenoSchema = new mongoose.Schema({
     default: 'horizontal',
   },
 
-  // Texto adicional
+  // Texto adicional (teléfono, eslogan...)
   textoAdicional: {
     type: String,
     maxlength: [200, 'El texto adicional no puede tener más de 200 caracteres'],
@@ -75,8 +107,8 @@ const disenoSchema = new mongoose.Schema({
     publicId: String,
     modoIntegracion: {
       type: String,
-      enum: ['ia', 'exacto'],
-      default: 'ia',
+      enum: ['exacto'],
+      default: 'exacto',
     },
   },
 
@@ -93,6 +125,17 @@ const disenoSchema = new mongoose.Schema({
     default: 'moderno',
   },
 
+  // Extras
+  iluminacion: {
+    type: Boolean,
+    default: false,
+  },
+  
+  instalacion: {
+    type: Boolean,
+    default: false,
+  },
+
   // Configuración específica por tipo de producto
   configEspecifica: {
     // Letras corpóreas
@@ -100,20 +143,41 @@ const disenoSchema = new mongoose.Schema({
       type: String,
       enum: ['aluminio-sin-luz', 'pvc', 'aluminio-con-luz', 'pvc-retroiluminadas', 'metacrilato', 'pvc-impreso-uv', 'aluminio-retroiluminada', 'dibond-sin-relieve'],
     },
-    espesor: Number,
-    colorLuzLed: String,
-    materialLaser: String,
-    acabadoSuperficial: String,
+    espesor: {
+      type: String,
+      enum: ['3cm', '5cm', '8cm', '10cm', '13cm', '15cm', '16cm', '20cm', 'Sin relieve'],
+    },
+    colorLuzLed: {
+      type: String,
+      enum: ['blanco-calido', 'blanco-frio', 'rojo', 'verde', 'azul-celeste', 'azul', 'naranja', 'amarillo', 'rosa', 'morado'],
+    },
+    materialLaser: {
+      type: String,
+      enum: ['transparente', 'blanco', 'mdf', 'oro-espejo', 'plata-espejo', 'rosa-espejo'],
+    },
+    acabadoSuperficial: {
+      type: String,
+      enum: ['lacado-brillo', 'lacado-mate', 'cepillado', 'espejo'],
+    },
     
     // Lonas
-    tipoNegocioLona: String,
-    estiloLona: String,
+    tipoNegocioLona: {
+      type: String,
+      enum: ['bar', 'restaurante', 'tienda', 'peluqueria', 'gimnasio', 'oficina', 'taller', 'clinica', 
+             'cafeteria', 'panaderia', 'floristeria', 'tienda-mascotas', 'tienda-ropa', 'ferreteria', 
+             'optica', 'farmacia', 'general'],
+    },
+    estiloLona: {
+      type: String,
+      enum: ['festivo', 'elegante', 'retro', 'moderno', 'natural', 'urbano', 'playa', 'minimalista', 'industrial', 'vintage'],
+    },
   },
 
   // Descripción del diseño
   descripcion: {
     original: String,
     mejorada: String,
+    promptImagen: String,
   },
 
   // Dimensiones
@@ -146,10 +210,21 @@ const disenoSchema = new mongoose.Schema({
       url: String,
       publicId: String,
     },
+    generada: {
+      url: String,
+      publicId: String,
+      fecha: Date,
+    },
     variaciones: [{
       url: String,
       publicId: String,
       colorVariante: String,
+    }],
+    fondosLona: [{
+      id: Number,
+      url: String,
+      publicId: String,
+      seleccionado: Boolean,
     }],
   },
 
@@ -158,6 +233,14 @@ const disenoSchema = new mongoose.Schema({
     type: String,
     enum: ['pendiente', 'generando', 'completado', 'error'],
     default: 'pendiente',
+  },
+
+  // Progreso de generación
+  progreso: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
   },
 
   // Presupuesto asociado
@@ -209,19 +292,27 @@ disenoSchema.virtual('precioEstimado').get(function() {
   };
 
   const precioBase = preciosBase[this.categoria] || 0;
-  const area = (this.dimensiones.ancho * this.dimensiones.alto) / 10000; // en m²
+  const area = (this.dimensiones.ancho * this.dimensiones.alto) / 10000;
   
   let precioEstimado = 0;
   
   if (unidades[this.categoria] === 'm²') {
     precioEstimado = precioBase * area;
   } else {
-    // Para productos por unidad/letra, estimamos basado en la longitud del nombre
-    const numLetras = this.nombreNegocio.replace(/\s/g, '').length;
+    const numLetras = this.texto ? this.texto.replace(/\s/g, '').length : 1;
     precioEstimado = precioBase * Math.max(1, numLetras);
   }
 
+  // Extras
+  if (this.iluminacion) precioEstimado += 150;
+  if (this.instalacion) precioEstimado += 80;
+
   return Math.round(precioEstimado);
+});
+
+// Virtual para obtener área
+disenoSchema.virtual('area').get(function() {
+  return (this.dimensiones.ancho * this.dimensiones.alto) / 10000;
 });
 
 // Índices
@@ -229,5 +320,6 @@ disenoSchema.index({ createdAt: -1 });
 disenoSchema.index({ categoria: 1 });
 disenoSchema.index({ estado: 1 });
 disenoSchema.index({ 'lead.email': 1 });
+disenoSchema.index({ usuario: 1 });
 
 module.exports = mongoose.model('Diseno', disenoSchema);

@@ -54,12 +54,27 @@ class MockupService {
       tipografia,
       material,
       colorLuzLed,
+      ledColor,
       sistemaIluminacion,
       espesor,
+      corporeaTipo,
+      corporeaRelieve,
+      laserMaterial,
+      lonaBusinessType,
+      lonaStyle,
+      descripcion,
+      dimensiones,
       textoAdicional,
       logo,
-      modoLogo = 'ia' // 'ia' = inspirado, 'exacto' = integrar directamente
+      modoLogo = 'ia'
     } = disenioData;
+    
+    // Normalizar campos (frontend usa diferentes nombres)
+    const finalColorLuzLed = colorLuzLed || ledColor;
+    const finalEspesor = espesor || corporeaRelieve;
+    const finalMaterial = material || (corporeaTipo ? this._mapCorporeaTipoToMaterial(corporeaTipo) : null) || laserMaterial;
+    const finalTipoNegocio = lonaBusinessType;
+    const finalEstiloLona = lonaStyle;
 
     // Construir texto completo (nombre + adicional si existe)
     const textoCompleto = textoAdicional 
@@ -70,77 +85,257 @@ class MockupService {
     let promptBase = '';
     let promptConLogo = '';
 
+    // =========================================================================
+    // LETRAS NEÓN - ÚNICAMENTE TUBOS DE VIDRIO
+    // =========================================================================
     if (categoria === 'letras-neon') {
-      const colorDesc = colores.map(c => c.nombre).join(' and ');
-      const colorLuz = colorLuzLed || 'warm white';
+      const colorDesc = colores.map(c => c.nombre || c.hex).join(' and ');
+      const colorLuz = finalColorLuzLed || 'warm white';
       
-      promptBase = `REAL NEON TUBES - NO BACKING PANEL
+      promptBase = `[PRODUCT TYPE: REAL NEON SIGN - LED NEON FLEX TUBES]
 
-Construction:
-- Individual REAL glass neon tubes, 10-12mm diameter
-- ${colorDesc} gas-filled tubes, ${colorLuz} glow
-- 3D cylindrical glass with visible thickness
-- NO acrylic/glass backing panel
-- NO frame or substrate
-- Individual tubes forming letters "${textoCompleto}"
+⚠️ CRITICAL RULES - MUST FOLLOW EXACTLY:
+- Product: LED neon flex tubes (silicone/flex material, NOT solid letters)
+- Construction: Continuous flexible LED tube forming letters
+- NO solid materials (no aluminum, no PVC, no acrylic blocks)
+- NO 3D channel letters with returns/sides
 
-Mounting Hardware Visible:
-- Small metal electrode housings at tube ends
-- Silicone cable connections between letter sections
-- ${estiloVisual} style
+SPECIFICATIONS:
+- Tube type: LED neon flex, 8-10mm diameter
+- Color: ${colorDesc} glowing tubes with ${colorLuz} light emission
+- Backing: Optional clear acrylic panel OR individual mounting
+- Effect: Continuous glow along tube length
+- Mounting: Visible clear clips/holders every 15-20cm
 
-PURE BLACK BACKGROUND, studio lighting,
-product photography, isolated individual tubes,
-8k resolution, hyper-realistic glass material`;
+TEXT TO CREATE: "${textoCompleto}"
+Style: ${estiloVisual}
+
+VISUAL REQUIREMENTS:
+- Pure black background (#000000)
+- Glowing tubes with visible light halo
+- Tube connections/wiring visible between letters
+- Professional product photography
+- 8k resolution, hyper-realistic
+
+FORBIDDEN:
+× Solid block letters
+× Metal/PVC/Acrylic dimensional letters
+× Channel letter construction
+× Non-illuminated materials`;
 
       if (logo) {
         if (modoLogo === 'exacto') {
-          promptConLogo = `Recreate this exact logo as a LED neon sign. Transform the provided logo image into glowing neon tubes style while keeping the same design, colors, and layout. The sign should show "${textoCompleto}" in neon style inspired by this logo.`;
+          promptConLogo = `[TYPE: LED NEON FLEX SIGN] Convert this logo into glowing LED neon flex tubes. Continuous flexible silicone tubes forming "${textoCompleto}". NO solid letters, NO metal construction. Glowing neon effect only.`;
         } else {
-          promptConLogo = `Create a LED neon sign inspired by this brand logo. Use similar colors, style, and design elements from the provided logo image. The sign should show "${textoCompleto}" with the brand's visual identity.`;
+          promptConLogo = `[TYPE: LED NEON FLEX SIGN] Create neon tubes inspired by this logo. Flexible LED tubing with ${colorDesc} glow forming "${textoCompleto}". NO dimensional solid materials.`;
         }
       }
 
+    // =========================================================================
+    // LETRAS CORPÓREAS - MATERIAL SÓLIDO CON VOLUMEN
+    // =========================================================================
     } else if (categoria === 'letras-corporeas') {
-      const colorDesc = colores.map(c => c.nombre).join(' and ');
-      const matDesc = material || 'aluminum';
-      const depth = espesor || 8;
+      const colorDesc = colores.map(c => c.nombre || c.hex).join(' and ');
+      const matDesc = finalMaterial || 'aluminum';
+      const depth = finalEspesor || 8;
       
-      let iluminacionDesc = '';
-      if (sistemaIluminacion === 'trasera') {
-        iluminacionDesc = `with warm white LED halo backlight, soft glow behind letters`;
-      } else if (sistemaIluminacion === 'frontal') {
-        iluminacionDesc = `with front LED illumination, bright face lighting`;
+      // Determinar tipo específico de iluminación
+      let tipoIluminacion = '';
+      if (sistemaIluminacion === 'trasera' || corporeaTipo?.includes('retroiluminada')) {
+        tipoIluminacion = 'BACKLIT';
+      } else if (sistemaIluminacion === 'frontal' || corporeaTipo?.includes('iluminada')) {
+        tipoIluminacion = 'FRONT-LIT';
+      } else {
+        tipoIluminacion = 'NON-LIT';
       }
+      
+      const contextoDesc = descripcion?.mejorada || descripcion?.original || '';
+      const dimsDesc = dimensiones ? `${dimensiones.ancho || '?'}cm x ${dimensiones.alto || '?'}cm` : 'proportional';
 
-      promptBase = `Professional 3D channel letters "${textoCompleto}" isolated on pure white background,
-${estiloVisual} style, ${matDesc} material, ${colorDesc} finish, ${depth}cm depth/return,
-${iluminacionDesc}, dimensional signage, clean typography "${textoCompleto}",
-studio photography, isolated product shot, no environment, no context, just the letters,
-8k resolution, photorealistic, sharp focus, professional product photography`;
+      promptBase = `[PRODUCT TYPE: 3D CHANNEL LETTERS - SOLID CONSTRUCTION]
+
+⚠️ CRITICAL RULES - MUST FOLLOW EXACTLY:
+- Product: SOLID 3D channel letters with RETURNS/SIDES
+- Material: ${matDesc} (solid, NOT flexible tubes)
+- Construction: Front face + side returns + back block
+- Depth: ${depth}cm thick visible on all sides
+- NO neon tubes, NO LED flex, NO continuous glowing strips
+
+SPECIFICATIONS:
+- Material: ${matDesc} with ${colorDesc} finish
+- Dimensions: ${dimsDesc}
+- Type: ${tipoIluminacion}
+${tipoIluminacion === 'BACKLIT' ? '- Lighting: LED halo glow BEHIND letters only, letters themselves are opaque solid' : ''}
+${tipoIluminacion === 'FRONT-LIT' ? '- Lighting: LED illuminating front face of solid letters' : ''}
+${tipoIluminacion === 'NON-LIT' ? '- NO lighting, completely opaque solid material' : ''}
+
+TEXT TO CREATE: "${textoCompleto}"
+Style: ${estiloVisual}
+
+CONSTRUCTION DETAILS (MUST SHOW):
+- Visible ${depth}cm side returns on every letter
+- Solid front faces (not hollow tubes)
+- Individual letter separation
+- Mounting spacers/brackets visible
+- Material texture: ${matDesc}
+
+VISUAL REQUIREMENTS:
+- Pure white or neutral background
+- Show dimensional depth clearly
+- Side returns visible and well-lit
+- NO glass tubes, NO continuous neon effect
+- Professional product photography, 8k
+
+FORBIDDEN:
+× Neon tubes or flex LED strips
+× Continuous glowing lines
+× Flat 2D signs without depth
+× Hollow tube construction`;
 
       if (logo) {
         if (modoLogo === 'exacto') {
-          promptConLogo = `Recreate this exact logo as 3D channel letters. Transform the provided logo image into dimensional signage while keeping the same design, typography, and brand identity. The letters should show "${textoCompleto}" matching the logo style.`;
+          promptConLogo = `[TYPE: 3D CHANNEL LETTERS] Convert logo to SOLID ${matDesc} letters with ${depth}cm depth/returns. "${textoCompleto}" with visible dimensional sides. ${tipoIluminacion}. NO neon tubes, flexible strips.`;
         } else {
-          promptConLogo = `Create 3D channel letters inspired by this brand logo. Use similar typography style, colors, and design elements from the provided logo image. The letters should show "${textoCompleto}" with the brand's visual identity.`;
+          promptConLogo = `[TYPE: 3D CHANNEL LETTERS] Create solid ${matDesc} letters (${depth}cm depth) inspired by logo. Dimensional with returns/sides. ${tipoIluminacion}. NO neon tubing.`;
         }
       }
 
-    } else {
-      // Default para otras categorías
-      const colorDesc = colores.map(c => c.nombre).join(' and ');
-      promptBase = `Professional ${categoria} sign "${textoCompleto}" isolated on neutral background,
-${estiloVisual} style, ${colorDesc} colors, clean typography "${textoCompleto}",
-isolated product shot, no environment, studio photography,
-8k resolution, photorealistic`;
+    // =========================================================================
+    // LONAS/PANCARTAS - MATERIAL TEXTIL PLANO
+    // =========================================================================
+    } else if (categoria === 'lonas-pancartas' || categoria === 'lonas') {
+      const colorDesc = colores.map(c => c.nombre || c.hex).join(' and ');
+      const negocioContext = finalTipoNegocio || tipoNegocio || 'general';
+      const estiloBanner = finalEstiloLona || estiloVisual;
+      const contextoDesc = descripcion?.mejorada || descripcion?.original || '';
+      
+      promptBase = `[PRODUCT TYPE: PRINTED VINYL BANNER - FLEXIBLE FABRIC]
+
+⚠️ CRITICAL RULES - MUST FOLLOW EXACTLY:
+- Product: FLAT printed vinyl banner/lona (flexible fabric)
+- Material: PVC vinyl fabric, textile material
+- Thickness: Thin flexible sheet (1-2mm max)
+- NO rigid structure, NO 3D depth, NO solid materials
+- NO lights, NO neon, NO illumination of any kind
+
+SPECIFICATIONS:
+- Material: Matte vinyl banner fabric
+- Print: Flat ink on fabric surface
+- Hardware: Metal grommets (ojales) at corners
+- Edges: Hemmed/reinforced with stitching
+- Format: Horizontal banner
+
+DESIGN:
+- Business: "${textoCompleto}"
+- Type: ${negocioContext}
+- Style: ${estiloBanner}
+- Colors: ${colorDesc}
+
+TEXT REQUIREMENTS:
+- "${textoCompleto}" printed FLAT on fabric
+- NO 3D effects, NO embossing, NO raised surfaces
+- NO glowing, NO lighting, NO neon
+- Flat printed typography only
+
+${contextoDesc ? `Additional design: ${contextoDesc}` : ''}
+
+VISUAL REQUIREMENTS (MUST SHOW):
+- Flat flexible fabric material
+- Natural slight wrinkles/texture
+- Metal grommets at corners clearly visible
+- Hemmed edges
+- Print shop product preview style
+- Isolated on neutral gray background
+- 8k photorealistic
+
+FORBIDDEN - WILL REJECT:
+× Any 3D depth or raised surfaces
+× Neon tubes, LED strips, glowing effects
+× Solid materials (metal, plastic blocks)
+× Channel letters or dimensional signage
+× Any illumination or light emission`;
 
       if (logo) {
-        promptConLogo = `Create a sign showing "${textoCompleto}" inspired by this brand logo. Use similar design elements, colors, and style from the provided logo image.`;
+        promptConLogo = `[TYPE: VINYL BANNER] Print this logo on FLAT vinyl banner fabric with "${textoCompleto}". Grommets at corners. NO lights, NO 3D, NO neon. Flat printed textile material only.`;
+      }
+      
+    // =========================================================================
+    // CORTE LÁSER - PANEL PLANO CON RECORTE
+    // =========================================================================
+    } else if (categoria === 'corte-laser' || categoria === 'metacrilato') {
+      const colorDesc = colores.map(c => c.nombre || c.hex).join(' and ');
+      const materialDesc = finalMaterial || 'acrylic';
+      const contextoDesc = descripcion?.mejorada || descripcion?.original || '';
+      
+      promptBase = `[PRODUCT TYPE: LASER CUT SIGN - FLAT PANEL WITH CUT-OUTS]
+
+⚠️ CRITICAL RULES - MUST FOLLOW EXACTLY:
+- Product: FLAT laser-cut panel (5-10mm thick max)
+- Construction: Single flat sheet with letters cut OUT
+- Material: ${materialDesc} sheet
+- NO dimensional depth beyond panel thickness
+- NO separate 3D letters, NO returns/sides
+
+SPECIFICATIONS:
+- Material: ${materialDesc} sheet, flat
+- Thickness: 5-10mm visible edge
+- Design: Letters/text cut OUT of the panel (negative space)
+- Edges: Clean laser-cut edges visible
+
+TEXT: "${textoCompleto}" cut out from panel
+Style: ${estiloVisual}
+Colors: ${colorDesc}
+
+${contextoDesc ? `Design: ${contextoDesc}` : ''}
+
+VISUAL REQUIREMENTS:
+- Show flat panel with cut-outs clearly
+- Visible material thickness on edges
+- Clean laser-cut precision
+- Isolated on contrasting background
+- NO 3D letters protruding
+- NO neon, NO separate dimensional elements
+- 8k photorealistic
+
+FORBIDDEN:
+× Separate 3D letters
+× Channel letter construction
+× Neon tubes or LED strips
+× Multi-layer dimensional effects`;
+
+      if (logo) {
+        promptConLogo = `[TYPE: LASER CUT PANEL] Convert logo to flat ${materialDesc} panel with cut-outs. "${textoCompleto}" laser-cut from single sheet. NO 3D letters, NO neon. Flat construction only.`;
+      }
+
+    // =========================================================================
+    // DEFAULT - CATEGORÍA GENÉRICA
+    // =========================================================================
+    } else {
+      const colorDesc = colores.map(c => c.nombre || c.hex).join(' and ');
+      const materialDesc = finalMaterial || 'acrylic';
+      const contextoDesc = descripcion?.mejorada || descripcion?.original || '';
+      
+      promptBase = `[PRODUCT TYPE: ${categoria.toUpperCase()}]
+
+⚠️ CRITICAL:
+- Exact product type: ${categoria}
+- Material: ${materialDesc}
+- Style: ${estiloVisual}
+
+TEXT: "${textoCompleto}"
+Colors: ${colorDesc}
+
+${contextoDesc ? `Design: ${contextoDesc}` : ''}
+
+Generate exactly the product type specified. Professional product photography, isolated, 8k.`;
+
+      if (logo) {
+        promptConLogo = `[TYPE: ${categoria}] Create "${textoCompleto}" inspired by this logo. Exact product type as specified.`;
       }
     }
 
     console.log('Generando rótulo aislado...');
+    console.log('Categoría:', categoria);
     if (logo) {
       console.log(`Logo detectado - Modo: ${modoLogo}`);
     }
@@ -150,7 +345,7 @@ isolated product shot, no environment, studio photography,
     // Si hay logo, usar inlineData para pasar la imagen como referencia
     if (logo) {
       const logoBase64 = this._extractBase64(logo);
-      const promptFinal = `${promptConLogo}\n\nBase design requirements: ${promptBase}`;
+      const promptFinal = `${promptConLogo}\n\nBase requirements: ${promptBase}`;
       
       console.log('Usando logo como referencia con inlineData...');
       
@@ -166,7 +361,7 @@ isolated product shot, no environment, studio photography,
         }
       ]);
     } else {
-      console.log('Prompt:', promptBase.substring(0, 150) + '...');
+      console.log('Prompt:', promptBase.substring(0, 200) + '...');
       result = await this.model.generateContent(promptBase);
     }
 
@@ -215,119 +410,148 @@ isolated product shot, no environment, studio photography,
     const esExterior = tipoNegocio && negociosExterior.includes(tipoNegocio.toLowerCase());
     const esInterior = tipoNegocio && negociosInterior.includes(tipoNegocio.toLowerCase());
 
-    // Generar mockup EXTERIOR
-    if (esExterior || !esInterior) {
-      try {
-        const mockupExterior = await this._generarMockupExterior(rotuloBase64, disenioData);
-        resultados.push({
-          tipo: 'exterior',
-          ...mockupExterior
-        });
-      } catch (error) {
-        console.error('Error generando mockup exterior:', error);
-        resultados.push({
-          tipo: 'exterior',
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
-    // Generar mockup INTERIOR
-    if (esInterior || !esExterior) {
-      try {
-        const mockupInterior = await this._generarMockupInterior(rotuloBase64, disenioData);
-        resultados.push({
-          tipo: 'interior',
-          ...mockupInterior
-        });
-      } catch (error) {
-        console.error('Error generando mockup interior:', error);
-        resultados.push({
-          tipo: 'interior',
-          success: false,
-          error: error.message
-        });
-      }
+    // Generar solo mockup EXTERIOR (interior deshabilitado)
+    try {
+      const mockupExterior = await this._generarMockupExterior(rotuloBase64, disenioData);
+      resultados.push({
+        tipo: 'exterior',
+        ...mockupExterior
+      });
+    } catch (error) {
+      console.error('Error generando mockup exterior:', error);
+      resultados.push({
+        tipo: 'exterior',
+        success: false,
+        error: error.message
+      });
     }
 
     return resultados;
   }
 
-  async _generarMockupExterior(rotuloBase64, disenioData) {
-    const { nombreNegocio, textoAdicional, fachada, tipoNegocio, categoria } = disenioData;
+  async _generarMockupExterior(rotuloBase64, disenioData, tipoVista = 'fachada-cerrada') {
+    const { nombreNegocio, textoAdicional, fachada, tipoNegocio, categoria, fachadaPersonalizada } = disenioData;
     
     // Texto completo para el prompt
     const textoCompleto = textoAdicional 
       ? `${nombreNegocio} ${textoAdicional}` 
       : nombreNegocio;
 
-    // Descripción de la fachada
-    const fachadaDesc = this._getFachadaDescripcion(fachada);
+    // Verificar si hay fachada personalizada
+    const tieneFachadaPersonalizada = fachadaPersonalizada && fachadaPersonalizada.startsWith('data:');
     
-    // Contexto según tipo de negocio
-    let contextoDesc = '';
-    if (['bar', 'pub'].includes(tipoNegocio)) {
-      contextoDesc = 'lively bar district, pedestrians walking, evening atmosphere, inviting entrance';
-    } else if (['cafe', 'panaderia'].includes(tipoNegocio)) {
-      contextoDesc = 'cozy street cafe, outdoor seating, morning light, welcoming atmosphere';
-    } else if (['restaurante'].includes(tipoNegocio)) {
-      contextoDesc = 'restaurant row, diners entering, evening ambiance, appetizing atmosphere';
+    // Descripción del tipo de producto para el mockup
+    let productoDesc = '';
+    if (categoria === 'letras-neon') {
+      productoDesc = 'LED neon flex sign with glowing tubes mounted on facade';
+    } else if (categoria === 'letras-corporeas') {
+      productoDesc = '3D channel letters with solid material depth mounted on building facade';
+    } else if (categoria === 'lonas-pancartas' || categoria === 'lonas') {
+      productoDesc = 'vinyl banner hanging on storefront (NOT mounted on wall, banner hanging)';
     } else {
-      contextoDesc = 'commercial street, pedestrian traffic, storefront visibility, urban setting';
+      productoDesc = 'sign mounted on building facade';
+    }
+    
+    // Contexto según tipo de vista
+    let contextoDesc = '';
+    
+    if (tipoVista === 'contexto-amplio') {
+      contextoDesc = 'wide street view showing full building context, pedestrians walking by';
+    } else {
+      contextoDesc = 'close-up of building facade showing sign installation';
     }
 
-    // Prompt para integración realista del rótulo
-    const promptText = `ULTRA-REALISTIC NEON SIGN - MOUNTED ON WALL
+    // Prompt específico según categoría
+    let promptText = '';
+    
+    if (categoria === 'lonas-pancartas' || categoria === 'lonas') {
+      // Lona cuelga, no se monta sobre la pared
+      promptText = `PROFESSIONAL PHOTOGRAPHY - VINYL BANNER ON STOREFRONT
 
-CRITICAL: INDIVIDUAL LETTER MOUNTING - NO SUPPORT PANEL
-- Each letter/bend is mounted DIRECTLY to ${fachadaDesc} with individual metal brackets
-- NO glass/acrylic backing panel holding the entire sign
-- NO frame or box around the sign
-- Each tube section has its own mounting hardware
+CRITICAL: This is a BANNER HANGING from the storefront, NOT mounted flat on the wall.
 
-PHYSICAL NEON SPECIFICATIONS:
-- REAL glass neon tubes, 10-12mm diameter
-- Individual chrome/stainless steel brackets at each letter mounting point
-- Brackets bolted DIRECTLY into wall surface
-- Tubes protrude 5-8cm from wall on spacers
-- Black silicone-coated cables connect letter sections
-- Visible wire runs between letters along wall surface
-- Metal transformer box mounted on wall near sign
+SCENE:
+- Vinyl banner with "${textoCompleto}" hanging from hooks above storefront
+- Banner material visible: flexible fabric with grommets
+- ${contextoDesc}
+- Business type: ${tipoNegocio || 'commercial'}
 
-MOUNTING DETAILS (CRITICAL):
-- Individual "L" brackets or circular mounts at tube bends and straight sections
-- Visible screws/bolts securing each bracket to ${fachadaDesc}
-- NO continuous backing plate or substrate
-- Letters appear to "float" slightly but each has physical connection to wall
-- Gaps between letters show wall texture behind
+IMAGE 1: The banner sign
+IMAGE 2: The storefront/building
 
-PHYSICAL PROPERTIES:
-- Tubes cast DISTINCT SHADOWS on wall (one per tube section)
-- Brackets cast small sharp shadows
-- Glow reflects subtly on wall surface around tubes
-- Weather-appropriate installation (sealed penetrations, outdoor-rated)
+BANNER INSTALLATION:
+- Hanging banner, slightly curved due to gravity
+- Grommets at top corners with ropes/chains
+- Natural fabric drape visible
+- NOT flat against wall - it's a hanging banner
 
-STOREFRONT:
-${fachadaDesc}
-${contextoDesc}
+PHOTOGRAPHIC STYLE:
+- Professional architectural photography
+- Realistic lighting matching time of day
+- ${tieneFachadaPersonalizada ? 'Use the EXACT facade from Image 2' : `Building style: ${this._getFachadaDescripcion(fachada)}`}
+- 8k photorealistic`;
+    } else {
+      // Letras montadas en fachada
+      promptText = `PROFESSIONAL SIGNAGE PHOTOGRAPHY - EXTERIOR INSTALLATION
 
-COMPOSITION: Sign is architectural element, not applied graphic
+CRITICAL: Mount the sign EXACTLY as the product type on the building facade.
 
-OUTPUT: Professional architectural photography, 8k, dusk/evening lighting`; 
+PRODUCT: ${productoDesc}
+TEXT: "${textoCompleto}"
 
-    // Enviar prompt + imagen de referencia como contexto visual
-    const result = await this.model.generateContent([
-      {
-        text: promptText
-      },
-      {
-        inlineData: {
-          mimeType: 'image/png',
-          data: rotuloBase64
-        }
+SCENE: ${contextoDesc}
+Business type: ${tipoNegocio || 'commercial'}
+
+IMAGE 1: The sign to mount
+IMAGE 2: The building facade
+
+INSTALLATION REQUIREMENTS:
+${categoria === 'letras-neon' ? '- Mount neon tubes with visible mounting clips' : ''}
+${categoria === 'letras-corporeas' ? '- Mount solid letters with visible spacers, show dimensional depth' : ''}
+- Position on available wall space between windows/doors
+- Realistic mounting hardware visible
+- Natural shadows cast on wall
+
+PHOTOGRAPHIC STYLE:
+- Professional real estate photography
+- ${tieneFachadaPersonalizada ? 'Use EXACT building from Image 2' : `Building: ${this._getFachadaDescripcion(fachada)}`}
+- Appropriate lighting for ${categoria}
+- 8k photorealistic`;
+    }
+
+    // Preparar contenido para Gemini - ORDEN CRÍTICO
+    const contentParts = [];
+    
+    // 1. Primero el prompt explicativo
+    contentParts.push({ text: promptText });
+    
+    // 2. Segundo: EL RÓTULO (la imagen principal a integrar)
+    contentParts.push({
+      text: 'IMAGE 1 - THE SIGN (Place this exact sign on the facade):'
+    });
+    contentParts.push({
+      inlineData: {
+        mimeType: 'image/png',
+        data: rotuloBase64
       }
-    ]);
+    });
+    
+    // 3. Tercero: La fachada (el fondo)
+    if (tieneFachadaPersonalizada) {
+      const fachadaBase64 = this._extractBase64(fachadaPersonalizada);
+      contentParts.push({
+        text: 'IMAGE 2 - THE FACADE (Mount the sign on this wall):'
+      });
+      contentParts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: fachadaBase64
+        }
+      });
+    }
+    
+    // Enviar a Gemini
+    const result = await this.model.generateContent(contentParts);
     
     const candidates = result.response.candidates;
     let imagenBase64 = null;
@@ -347,16 +571,21 @@ OUTPUT: Professional architectural photography, 8k, dusk/evening lighting`;
   }
 
   async _generarMockupInterior(rotuloBase64, disenioData) {
-    const { nombreNegocio, textoAdicional, fachada, tipoNegocio, categoria } = disenioData;
+    const { nombreNegocio, textoAdicional, fachada, tipoNegocio, categoria, fachadaPersonalizada } = disenioData;
     
     // Texto completo para el prompt
     const textoCompleto = textoAdicional 
       ? `${nombreNegocio} ${textoAdicional}` 
       : nombreNegocio;
 
+    // Verificar si hay fachada personalizada
+    const tieneFachadaPersonalizada = fachadaPersonalizada && fachadaPersonalizada.startsWith('data:');
+
     // Contexto interior según tipo de negocio
     let interiorDesc = '';
-    if (['spa', 'wellness'].includes(tipoNegocio)) {
+    if (tieneFachadaPersonalizada) {
+      interiorDesc = 'interior space with the EXACT wall shown in the reference image';
+    } else if (['spa', 'wellness'].includes(tipoNegocio)) {
       interiorDesc = 'luxury spa reception, calm atmosphere, soft lighting, marble walls, serene environment';
     } else if (['hotel'].includes(tipoNegocio)) {
       interiorDesc = 'hotel lobby, elegant reception desk, warm lighting, premium materials, welcoming ambiance';
@@ -367,10 +596,13 @@ OUTPUT: Professional architectural photography, 8k, dusk/evening lighting`;
     }
 
     // Prompt para integración realista en interior
-    const promptText = `ULTRA-REALISTIC NEON SIGN - INTERIOR WALL MOUNTED
+    const promptText = `ULTRA-REALISTIC SIGN - INTERIOR WALL MOUNTED
 
-CRITICAL: NO BACKING PANEL - INDIVIDUAL MOUNTING ONLY
-- Each neon letter mounted INDIVIDUALLY to interior wall
+${tieneFachadaPersonalizada ? `CRITICAL: USE THE PROVIDED WALL IMAGE AS BACKGROUND
+- Place the sign realistically on the EXACT wall shown in the reference image
+- Match the perspective, lighting, and wall texture of the provided image` : `CRITICAL: NO BACKING PANEL - INDIVIDUAL MOUNTING ONLY`}
+
+- Each letter mounted INDIVIDUALLY to interior wall
 - NO glass/acrylic substrate holding the entire sign
 - NO frame, box, or backing plate behind letters
 - Individual mounting hardware per letter section
@@ -407,18 +639,34 @@ CRITICAL RULES:
 
 OUTPUT: Interior design photography, 8k, professional lighting showing depth`; 
 
-    // Enviar prompt + imagen de referencia como contexto visual
-    const result = await this.model.generateContent([
-      {
-        text: promptText
-      },
-      {
+    // Preparar contenido para Gemini
+    const contentParts = [];
+    
+    // Si hay fachada personalizada, agregarla primero como referencia
+    if (tieneFachadaPersonalizada) {
+      const fachadaBase64 = this._extractBase64(fachadaPersonalizada);
+      contentParts.push({
+        text: 'This is the EXACT interior wall where the sign should be placed. Use this image as the background:'
+      });
+      contentParts.push({
         inlineData: {
-          mimeType: 'image/png',
-          data: rotuloBase64
+          mimeType: 'image/jpeg',
+          data: fachadaBase64
         }
+      });
+    }
+    
+    // Agregar prompt y rótulo
+    contentParts.push({ text: promptText });
+    contentParts.push({
+      inlineData: {
+        mimeType: 'image/png',
+        data: rotuloBase64
       }
-    ]);
+    });
+    
+    // Enviar a Gemini
+    const result = await this.model.generateContent(contentParts);
     
     const candidates = result.response.candidates;
     let imagenBase64 = null;
@@ -447,6 +695,26 @@ OUTPUT: Interior design photography, 8k, professional lighting showing depth`;
       'marmol': 'polished marble facade, luxury premium building'
     };
     return fachadas[fachada] || 'modern commercial building facade';
+  }
+
+  /**
+   * Mapea tipo de letra corpórea a material
+   */
+  _mapCorporeaTipoToMaterial(tipo) {
+    const materiales = {
+      'pvc': 'PVC plastic',
+      'pvc-pintado': 'painted PVC',
+      'aluminio': 'brushed aluminum',
+      'aluminio-compuesto': 'composite aluminum',
+      'acero': 'stainless steel',
+      'acero-inox': 'mirror stainless steel',
+      'laton': 'brass',
+      'laton-pulido': 'polished brass',
+      'acrilico': 'acrylic',
+      'metacrilato': 'methacrylate',
+      'madera': 'natural wood'
+    };
+    return materiales[tipo] || 'aluminum';
   }
 
   /**

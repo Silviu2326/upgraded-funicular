@@ -148,7 +148,7 @@ router.post('/generar-mockups', async (req, res) => {
 });
 
 // ============================================================================
-// ENDPOINT: Generación completa (Paso 1 + Paso 2 en una sola llamada)
+// ENDPOINT: Generación completa (2 rótulos + 2 mockups exteriores)
 // ============================================================================
 router.post('/generar-completo', async (req, res) => {
   console.log('📥 POST /generar-completo recibido');
@@ -164,78 +164,78 @@ router.post('/generar-completo', async (req, res) => {
       });
     }
 
-    console.log('🎨 Iniciando generación completa...');
+    console.log('🎨 Iniciando generación completa (2 rótulos + 2 mockups)...');
     console.log('Negocio:', disenioData.nombreNegocio);
-    if (disenioData.textoAdicional) {
-      console.log('Texto adicional:', disenioData.textoAdicional);
-    }
 
-    // PASO 1: Generar rótulo aislado
-    console.log('\n📸 PASO 1: Generando rótulo aislado...');
-    const inicioPaso1 = Date.now();
-    
-    const rotulo = await mockupService.generarRotuloAislado(disenioData);
-    const tiempoPaso1 = Date.now() - inicioPaso1;
-    
-    console.log(`✅ Rótulo generado en ${(tiempoPaso1/1000).toFixed(1)}s`);
+    const resultados = [];
+    const tiempos = [];
 
-    // Guardar rótulo
-    const rotuloGuardado = await mockupService.guardarImagen(
-      rotulo,
-      'uploads/rotulos',
-      'rotulo-aislado'
-    );
+    // Generar 2 sets completos (rótulo + mockup exterior)
+    for (let i = 1; i <= 2; i++) {
+      console.log(`\n🔄 SET ${i}/2:`);
+      const inicioSet = Date.now();
 
-    // PASO 2: Generar mockups
-    console.log('\n🏢 PASO 2: Generando mockups...');
-    const inicioPaso2 = Date.now();
-    
-    const mockups = await mockupService.generarMockups(rotulo.imagenBase64, disenioData);
-    const tiempoPaso2 = Date.now() - inicioPaso2;
-    
-    console.log(`✅ Mockups generados en ${(tiempoPaso2/1000).toFixed(1)}s`);
+      // PASO 1: Generar rótulo (con variación para el segundo)
+      console.log(`  📸 Generando rótulo ${i}...`);
+      const rotuloData = i === 1 ? disenioData : { ...disenioData, variacion: 2 };
+      const rotulo = await mockupService.generarRotuloAislado(rotuloData);
+      
+      // Guardar rótulo
+      const rotuloGuardado = await mockupService.guardarImagen(
+        rotulo,
+        'uploads/rotulos',
+        `rotulo-aislado-${i}`
+      );
 
-    // Guardar mockups
-    const mockupsResultado = [];
-    for (const mockup of mockups) {
+      // PASO 2: Generar mockup exterior
+      console.log(`  🏢 Generando mockup exterior ${i}...`);
+      // Variación 1: Vista de fachada cerrada, Variación 2: Vista amplia con contexto del negocio
+      const tipoVista = i === 1 ? 'fachada-cerrada' : 'contexto-amplio';
+      const mockup = await mockupService._generarMockupExterior(rotulo.imagenBase64, disenioData, tipoVista);
+      
+      // Guardar mockup
+      let mockupGuardado = null;
       if (mockup.success) {
-        const guardado = await mockupService.guardarImagen(
+        mockupGuardado = await mockupService.guardarImagen(
           mockup,
-          `uploads/mockups/${mockup.tipo}`,
-          `mockup-${mockup.tipo}`
+          'uploads/mockups/exterior',
+          `mockup-exterior-${i}`
         );
-        mockupsResultado.push({
-          tipo: mockup.tipo,
-          success: true,
-          base64: mockup.imagenBase64,
-          url: guardado.url,
-          tamanoKB: (mockup.imagenBase64.length * 0.75 / 1024).toFixed(1)
-        });
-      } else {
-        mockupsResultado.push({
-          tipo: mockup.tipo,
-          success: false,
-          error: mockup.error
-        });
       }
+
+      const tiempoSet = Date.now() - inicioSet;
+      tiempos.push(tiempoSet);
+
+      resultados.push({
+        id: i,
+        rotulo: {
+          base64: rotulo.imagenBase64,
+          url: rotuloGuardado.url,
+          tamanoKB: (rotulo.imagenBase64.length * 0.75 / 1024).toFixed(1),
+          prompt: rotulo.prompt
+        },
+        mockup: {
+          tipo: 'exterior',
+          success: mockup.success,
+          base64: mockup.imagenBase64,
+          url: mockupGuardado?.url || null,
+          tamanoKB: mockup.imagenBase64 ? (mockup.imagenBase64.length * 0.75 / 1024).toFixed(1) : null,
+          error: mockup.error || null
+        }
+      });
+
+      console.log(`  ✅ Set ${i} completado en ${(tiempoSet/1000).toFixed(1)}s`);
     }
 
-    const tiempoTotal = tiempoPaso1 + tiempoPaso2;
-
-    console.log(`\n✅ Generación completa finalizada en ${(tiempoTotal/1000).toFixed(1)}s`);
+    const tiempoTotal = tiempos.reduce((a, b) => a + b, 0);
+    console.log(`\n✅ Generación completa: 2 sets finalizados en ${(tiempoTotal/1000).toFixed(1)}s`);
 
     res.json({
       success: true,
-      rotulo: {
-        base64: rotulo.imagenBase64,
-        url: rotuloGuardado.url,
-        tamanoKB: (rotulo.imagenBase64.length * 0.75 / 1024).toFixed(1),
-        prompt: rotulo.prompt
-      },
-      mockups: mockupsResultado,
+      sets: resultados,
       tiempos: {
-        rotulo: tiempoPaso1,
-        mockups: tiempoPaso2,
+        set1: tiempos[0],
+        set2: tiempos[1],
         total: tiempoTotal
       }
     });
